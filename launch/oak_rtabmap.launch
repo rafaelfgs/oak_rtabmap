@@ -1,0 +1,195 @@
+<launch>
+
+
+  <param name = "use_sim_time"     value = "false"/>
+
+  <arg name = "rgb_compressed"     default = "false"/>
+  <arg name = "depth_compressed"   default = "false"/>
+  <arg name = "rgbd_odometry"      default = "true"/>
+  <arg name = "visual_slam"        default = "true"/>
+  <arg name = "rtabmapviz"         default = "true"/>
+
+  <arg name = "rgb_img"            default = "/stereo_rgb_node/filtered/color/image"/>
+  <arg name = "rgb_info"           default = "/stereo_rgb_node/filtered/color/camera_info"/>
+  <arg name = "depth_img"          default = "/stereo_rgb_node/filtered/depth/image"/>
+  <arg name = "depth_info"         default = "/stereo_rgb_node/filtered/depth/camera_info"/>
+  <arg name = "imu"                default = "/imu/data"/>
+  <arg name = "odom"               default = "/rtabmap/odom"/>
+
+  <arg name = "cam_tf"             default = "0.00 0 0.00 0 0 0 1"/>
+  <arg name = "imu_tf"             default = "0.00 0 0.00 0 0 0 1"/>
+
+  <arg name = "topic_odom"         default = "/rtabmap/odom"/>
+  <arg name = "topic_imu"          default = "/rtabmap/imu"/>
+  <arg name = "topic_rgb_img"      default = "/rtabmap/rgb/image_raw"/>
+  <arg name = "topic_rgb_info"     default = "/rtabmap/rgb/camera_info"/>
+  <arg name = "topic_depth_img"    default = "/rtabmap/depth/image_raw"/>
+  <arg name = "topic_depth_info"   default = "/rtabmap/depth/camera_info"/>
+
+  <arg name = "frame_imu"          default = "rtab_imu"/>
+  <arg name = "frame_rgb"          default = "rtab_rgb"/>
+  <arg name = "frame_depth"        default = "rtab_depth"/>
+  <arg name = "frame_map"          default = "rtab_init"/>
+  <arg name = "frame_odom"         default = "rtab_odom"/>
+  <arg name = "frame_pose"         default = "rtab_pose"/>
+
+  <arg name = "min_dist"           default = "7"/>
+  <arg name = "gravity_sigma"      default = "0.3"/>
+  <arg name = "holonomic"          default = "true"/>
+  <arg name = "reset_countdown"    default = "1"/>
+  <arg name = "start_new_map"      default = "false"/>
+  <arg name = "strategy"           default = "1"/>
+  <arg name = "optimize_max_error" default = "4.0"/>
+
+  <arg name = "wait_duration"      default = "0.2"/>
+  <arg name = "publish_tf"         default = "true"/>
+  <arg name = "wait_imu"           default = "false"/>
+  <arg name = "approx_sync"        default = "true"/>
+  <arg name = "queue_size"         default = "10"/>
+
+
+  <node if = "$(arg rgb_compressed)"
+        pkg  = "image_transport"
+        type = "republish"
+        name = "rgb_decompress_node"
+        output = "screen"
+        args = "compressed in:=$(arg rgb_img)
+                raw out:=$(arg rgb_img)">
+  </node>
+
+
+  <node if = "$(arg depth_compressed)"
+        pkg  = "image_transport"
+        type = "republish"
+        name = "depth_decompress_node"
+        output = "screen"
+        args = "compressedDepth in:=$(arg depth_img)
+                raw out:=$(arg depth_img)">
+  </node>
+
+
+  <node pkg = "rtabmap_test"
+        type = "topic_repub.py"
+        name = "rtab_repub_node"
+        output = "screen"
+        args = "_topics:='Imu        $(arg imu)        $(arg topic_imu)        $(arg frame_imu)
+                          Image      $(arg rgb_img)    $(arg topic_rgb_img)    $(arg frame_rgb)
+                          CameraInfo $(arg rgb_info)   $(arg topic_rgb_info)   $(arg frame_rgb)
+                          Image      $(arg depth_img)  $(arg topic_depth_img)  $(arg frame_depth)
+                          CameraInfo $(arg depth_info) $(arg topic_depth_info) $(arg frame_depth)'">
+  </node>
+
+
+  <node pkg = "rtabmap_test"
+        type = "rtab_broadcaster.py"
+        name = "rtab_broadcaster_node"
+        output = "screen"
+        args = "_topic:='CameraInfo $(arg topic_rgb_info) $(arg cam_tf) $(arg imu_tf)'">
+  </node>
+
+
+  <node pkg = "rtabmap_test"
+        type = "oak_image_filtering"
+        name = "oak_image_filtering_node"
+        output = "screen"
+        args = "_mask_size:=15 _min_range:=0.8 _max_range:=6.0 _publish_rate:=15">
+  </node>
+
+
+  <group ns = "rtabmap">
+
+    <node if = "$(arg rgbd_odometry)"
+          pkg = "rtabmap_ros"
+          type = "rgbd_odometry"
+          name = "rgbd_odometry"
+          output = "screen"
+          args = "--delete_db_on_start
+                  --GFTT/MinDistance $(arg min_dist)
+                  --Optimizer/GravitySigma $(arg gravity_sigma)
+                  --Odom/Holonomic $(arg holonomic)
+                  --Odom/ResetCountdown $(arg reset_countdown)
+                  --Rtabmap/StartNewMapOnLoopClosure $(arg start_new_map)
+                  --Odom/Strategy $(arg strategy)
+                  --RGBD/OptimizeMaxError $(arg optimize_max_error)">
+
+      <remap from = "odom"                        to = "$(arg topic_odom)"/>
+      <remap from = "imu"                         to = "$(arg topic_imu)"/>
+      <remap from = "rgb/image"                   to = "$(arg topic_rgb_img)"/>
+      <remap from = "depth/image"                 to = "$(arg topic_depth_img)"/>
+      <remap from = "rgb/camera_info"             to = "$(arg topic_rgb_info)"/>
+
+      <param name = "odom_frame_id"               type = "string" value = "$(arg frame_pose)"/>
+      <param name = "frame_id"                    type = "string" value = "$(arg frame_odom)"/>
+      <param name = "wait_for_transform_duration" type = "double" value = "$(arg wait_duration)"/>
+      <param name = "publish_tf"                  type = "bool"   value = "$(arg publish_tf)"/>
+      <param name = "wait_imu_to_init"            type = "bool"   value = "$(arg wait_imu)"/>
+      <param name = "approx_sync"                 type = "bool"   value = "$(arg approx_sync)"/>
+      <param name = "queue_size"                  type = "int"    value = "$(arg queue_size)"/>
+
+    </node>
+
+
+    <node if = "$(arg visual_slam)"
+          pkg = "rtabmap_ros"
+          type = "rtabmap"
+          name = "rtabmap"
+          output = "screen"
+          args = "--delete_db_on_start
+                  --GFTT/MinDistance $(arg min_dist)
+                  --Optimizer/GravitySigma $(arg gravity_sigma)
+                  --Odom/Holonomic $(arg holonomic)
+                  --Odom/ResetCountdown $(arg reset_countdown)
+                  --Rtabmap/StartNewMapOnLoopClosure $(arg start_new_map)
+                  --Odom/Strategy $(arg strategy)
+                  --RGBD/OptimizeMaxError $(arg optimize_max_error)">
+
+      <remap from = "rgb/image"                   to = "$(arg topic_rgb_img)"/>
+      <remap from = "depth/image"                 to = "$(arg topic_depth_img)"/>
+      <remap from = "rgb/camera_info"             to = "$(arg topic_rgb_info)"/>
+      <remap from = "imu"                         to = "$(arg topic_imu)"/>
+      <remap from = "odom"                        to = "$(arg topic_odom)"/>
+
+      <param name = "subscribe_depth"             type = "bool"   value = "true"/>
+      <param name = "subscribe_rgb"               type = "bool"   value = "true"/>
+      <param name = "subscribe_odom_info"         type = "bool"   value = "true"/>
+
+      <param name = "map_frame_id"                type = "string" value = "$(arg frame_map)"/>
+      <param name = "odom_frame_id"               type = "string" value = "$(arg frame_pose)"/>
+      <param name = "frame_id"                    type = "string" value = "$(arg frame_odom)"/>
+      <param name = "wait_for_transform_duration" type = "double" value = "$(arg wait_duration)"/>
+      <param name = "publish_tf"                  type = "bool"   value = "$(arg publish_tf)"/>
+      <param name = "approx_sync"                 type = "bool"   value = "$(arg approx_sync)"/>
+      <param name = "queue_size"                  type = "int"    value = "$(arg queue_size)"/>
+
+    </node>
+
+
+    <node if = "$(arg rtabmapviz)"
+          pkg = "rtabmap_ros"
+          type = "rtabmapviz"
+          name = "rtabmapviz"
+          output = "screen"
+          args = "-d ~/.ros/rtabmap_gui.ini">
+
+      <remap from = "rgb/image"                   to = "$(arg topic_rgb_img)"/>
+      <remap from = "depth/image"                 to = "$(arg topic_depth_img)"/>
+      <remap from = "rgb/camera_info"             to = "$(arg topic_rgb_info)"/>
+      <remap from = "imu"                         to = "$(arg topic_imu)"/>
+      <remap from = "odom"                        to = "$(arg topic_odom)"/>
+
+      <param name = "subscribe_depth"             type = "bool"   value = "true"/>
+      <param name = "subscribe_odom_info"         type = "bool"   value = "true"/>
+
+      <param name = "odom_frame_id"               type = "string" value = "$(arg frame_pose)"/>
+      <param name = "frame_id"                    type = "string" value = "$(arg frame_odom)"/>
+      <param name = "wait_for_transform_duration" type = "double" value = "$(arg wait_duration)"/>
+      <param name = "approx_sync"                 type = "bool"   value = "$(arg approx_sync)"/>
+      <param name = "queue_size"                  type = "int"    value = "$(arg queue_size)"/>
+
+    </node>
+
+
+  </group>
+
+
+</launch>
