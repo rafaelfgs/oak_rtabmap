@@ -132,7 +132,7 @@ public:
 
         gettimeofday(&tf, NULL);
         int t = (1000*tf.tv_sec + tf.tv_usec/1000) - (1000*to.tv_sec + to.tv_usec/1000);
-        ROS_INFO("mask_size: %d - %d ms", mask_size, t);
+        //ROS_INFO("mask_size: %d - %d ms", mask_size, t);
     }
 
 

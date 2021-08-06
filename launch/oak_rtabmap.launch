@@ -68,7 +68,7 @@
   </node>
 
 
-  <node pkg = "rtabmap_test"
+  <node pkg = "oak_rtabmap"
         type = "topic_repub.py"
         name = "rtab_repub_node"
         output = "screen"
@@ -80,7 +80,7 @@
   </node>
 
 
-  <node pkg = "rtabmap_test"
+  <node pkg = "oak_rtabmap"
         type = "rtab_broadcaster.py"
         name = "rtab_broadcaster_node"
         output = "screen"
@@ -88,7 +88,7 @@
   </node>
 
 
-  <node pkg = "rtabmap_test"
+  <node pkg = "oak_rtabmap"
         type = "oak_image_filtering"
         name = "oak_image_filtering_node"
         output = "screen"
