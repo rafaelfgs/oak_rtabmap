@@ -42,7 +42,7 @@ public:
         reading_ = true;
 
         color_sub_ = it_.subscribeCamera("/stereo_rgb_node/color/image", 10 + BUFFER_SIZE, &ImageFiltering::colorCallback, this);
-        depth_sub_ = it_.subscribeCamera("/stereo_rgb_node/stereo/image", 10 + BUFFER_SIZE, &ImageFiltering::depthCallback, this);
+        depth_sub_ = it_.subscribeCamera("/stereo_rgb_node/stereo/depth", 10 + BUFFER_SIZE, &ImageFiltering::depthCallback, this);
 
         color_pub_ = it_.advertiseCamera("/stereo_rgb_node/filtered/color/image", 10 + BUFFER_SIZE);
         depth_pub_ = it_.advertiseCamera("/stereo_rgb_node/filtered/depth/image", 10 + BUFFER_SIZE);
@@ -97,7 +97,7 @@ public:
         cv::Mat resized_depth = matchDepthToColor(input_depth_image, image_scale, ho, hf, wo, wf);
         //cv::resize(input_depth_image, resized_depth, cv::Size(), image_scale, image_scale, cv::INTER_NEAREST);
 
-        cv::Mat byte_depth = convertFloatToByte(resized_depth, min_range, max_range);
+        //cv::Mat byte_depth = convertFloatToByte(resized_depth, min_range, max_range);
 
         
         if (first_)
@@ -106,19 +106,22 @@ public:
 
             for (int k = 0; k < BUFFER_SIZE; k++)
             {
-                buffer_pixel_[k] = byte_depth.clone();
-                buffer_index_[k] = cv::Mat(byte_depth.rows, byte_depth.cols, CV_8UC1, k);
+                buffer_pixel_[k] = resized_depth.clone();
+                buffer_index_[k] = cv::Mat(resized_depth.rows, resized_depth.cols, CV_8UC1, k);
             }
         }
         
-        cv::Mat sequenced_image = medianSequence(byte_depth);
+        cv::Mat sequenced_image = medianSequence(resized_depth);
         
 
         cv::Mat median_depth; cv::medianBlur(sequenced_image, median_depth, mask_median);
+        cv::medianBlur(median_depth, median_depth, mask_median);
+        cv::medianBlur(median_depth, median_depth, mask_median);
+        cv::medianBlur(median_depth, median_depth, mask_median);
 
         cv::Mat mean_depth = nonZeroMean(median_depth, mask_mean);
 
-        cv::Mat float_depth = convertByteToFloat(mean_depth, min_range, max_range);
+        //cv::Mat float_depth = convertByteToFloat(mean_depth, min_range, max_range);
 
         std_msgs::Header header;
         header.seq = count;
@@ -130,7 +133,7 @@ public:
         cv_bridge::CvImage(header, "bgr8", resized_color).toImageMsg(output_color_image);
 
         sensor_msgs::Image output_depth_image;
-        cv_bridge::CvImage(header, "32FC1", float_depth).toImageMsg(output_depth_image);
+        cv_bridge::CvImage(header, "16UC1", mean_depth).toImageMsg(output_depth_image);
 
         sensor_msgs::CameraInfo output_color_info = updateInfo(input_color_info, image_scale, count);
         sensor_msgs::CameraInfo output_depth_info = updateInfo(input_depth_info, image_scale, count);
@@ -170,8 +173,8 @@ public:
 
         cv::Mat mean_image = raw_image.clone();
 
-        uint8_t* raw_ptr = raw_image.data;
-        uint8_t* mean_ptr = mean_image.data;
+        ushort* raw_ptr = (ushort*)raw_image.data;
+        ushort* mean_ptr = (ushort*)mean_image.data;
 
         int mo = mask_size / 2;
         int mf = (mask_size - 1) / 2 + 1;
@@ -266,13 +269,13 @@ public:
         int width = image.cols;
         int numel = height * width;
 
-        uint8_t* image_ptr = image.data;
-        uint8_t* pixel_ptr[BUFFER_SIZE];
+        ushort* image_ptr = (ushort*)image.data;
+        ushort* pixel_ptr[BUFFER_SIZE];
         uint8_t* index_ptr[BUFFER_SIZE];
 
         for (int k = 0; k < BUFFER_SIZE; k++)
         {
-            pixel_ptr[k] = buffer_pixel_[k].data;
+            pixel_ptr[k] = (ushort*)(buffer_pixel_[k].data);
             index_ptr[k] = buffer_index_[k].data;
         }
 

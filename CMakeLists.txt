@@ -133,6 +133,9 @@ target_link_libraries(oak_image_filtering ${catkin_LIBRARIES})
 add_executable(oak_image_filtering_optimized src/oak_image_filtering_optimized.cpp)
 target_link_libraries(oak_image_filtering_optimized ${catkin_LIBRARIES})
 
+add_executable(oak_image_filtering_last src/oak_image_filtering_last.cpp)
+target_link_libraries(oak_image_filtering_last ${catkin_LIBRARIES})
+
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure

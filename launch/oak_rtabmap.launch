@@ -89,10 +89,10 @@
 
 
   <node pkg = "oak_rtabmap"
-        type = "oak_image_filtering_optimized"
+        type = "oak_image_filtering_ushort"
         name = "oak_image_filtering_node"
         output = "screen"
-        args = "_mask_median:=13 _mask_mean:=1 _image_scale:=0.5 _min_range:=0.5 _max_range:=6.0 _publish_rate:=10">
+        args = "_mask_median:=5 _mask_mean:=1 _image_scale:=0.5 _min_range:=0.5 _max_range:=6.0 _publish_rate:=10">
   </node>
 
 
